@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset=utf-8>
+        <title>One million integers (3D)</title>
+        <link rel="stylesheet"
+      href="https://fonts.googleapis.com/css?family=Comfortaa">
+        <link rel="stylesheet" type="text/css" href="style.css">
+		<style>
+			body { margin: 0; }
+			canvas { width: 100%; height: 100% }
+        </style>
+         
+         
+                
+    </head>
+    <script src="js/three.min.js"></script>
+    <script src="js/numbertheory.js"></script>
+    <script src="js/color_scale/plasma.json"></script>
+    <script src="js/color_scale/interpolate.js"></script>
+    <script src="js/FlyControls.js"></script>
+    <script type="text/javascript" src="js/npy.js"></script>
+    <!-- shader for ordinary point rendering -->
+    <script type="x-shader/x-vertex" id="vertexshader">
+        varying vec3 f_color;
+        uniform float size;
+        varying float f_opacity;
+        uniform float opacity;
+        varying vec4 f_pos;
+        void main()            
+        {
+          
+
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+          float point_size = size/(gl_Position.w-0.1);
+          if(color.r==0.0 && color.g==0.0 && color.b==0.0)
+          {
+            point_size = 1.0;
+            f_opacity = 0.1;
+            f_color = vec3(0.1, 0.1, 0.1);
+          }
+          else 
+          {
+            
+            f_opacity = clamp(point_size, 0.0, 1.0)*opacity;
+            f_color = color;
+          }
+          f_pos = gl_Position;
+          gl_PointSize = clamp(point_size, 2.0, 40.0);
+          
+        }
+        
+    </script>
+
+    <script type="x-shader/x-fragment" id="fragmentshader">
+
+        precision highp float;
+        varying vec3 f_color;
+        varying float f_opacity;
+        varying vec4 f_pos;
+        uniform sampler2D point;
+        void main()
+        {
+          float tex_opacity = texture2D(point, gl_PointCoord).r;
+          if(tex_opacity<0.15) discard;
+          gl_FragColor 	= vec4(f_color,tex_opacity);
+          
+        }
+
+    </script>
+    <!-- shader for back buffer rendering to find out where the mouse is -->
+
+    <script type="x-shader/x-vertex" id="vertexmouseshader">        
+        varying vec3 f_color;
+        uniform float size;
+        attribute vec3 col_index;
+        void main()            
+        {
+          
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+          float point_size = 10.0/(gl_Position.w+0.01);
+          gl_PointSize = clamp(point_size, 1.0, 20.0);          
+          f_color = col_index;          
+        }
+        
+    </script>
+
+    <script type="x-shader/x-fragment" id="fragmentmouseshader">
+
+        precision highp float;
+        varying vec3 f_color;
+        void main()
+        {
+          gl_FragColor 	= vec4(f_color, 1.0);
+        }
+
+    </script>
+    <script  type="text/javascript" src="js/visualiser.js"></script>
+
+    <body id="body">
+
+            
+
+        <div class="heading">
+            One million integers            
+            
+        </div>  
+        
+
+        <div class="text" id="controls">
+           
+        <b>W A S D</b> move <b>Q E</b>; roll (a la Elite), <br> <b>R F</b> up/down, <b>mouse drag</b>, move viewport (in an unintuitive way)
+        <br> <b> T </b> toggle tooltip number display; click to factorise
+        <br>
+        <br> <div class="subheading"> <a href="index.md.html"> Explanation </a>  </div>
+        
+        
+    </div>  
+    <div id="tag" class="taglink"> <a href="https://twitter.com/jhnhw"> @jhnhw </a> </div>
+    <div id="container" tabindex="0"> 
+            <span class="tooltip" id="number_tooltip">Number</span>
+
+    </div>
+
+    <div class="slidecontainer">
+        <div class="slide_text"> Exposure </div>
+            <input type="range" min="1" max="100" value="20" step="1" class="slider" id="exposure_slider" onchange="adjust_exposure(this.value/100.0)">
+    </div>
+    <div class="text" id="predicate">
+        Filter by predicate (JavaScript) on the index <code>i</code>. For example <code>i%2==0</code> selects even points. <code>true</code> selects all points again.
+        <br> <a href="https://github.com/rsandor/number-theory"> number-theory </a> functions are available as <code>nt.xxx</code> (e.g. <code>nt.gcd(i,9)==3</code>)
+        <br> The array variables <code>primes</code> and <code>composites</code> are built in, and list all primes/composites &lt; 1000000.
+        <ul>
+        <li> If the snippet returns true/false, binary filtering is applied <code>i%2==0</code>
+        <li> If the snippet returns a single float, the result will be used to colour the points, mapping 0.0->1.0 to the plasma colormap <code>i/1000000.0</code>
+        <li> If the snippet returns an array of 3 floats, the result will be used to colour the points as raw RGB <code>[i/1000000.0, i%2/2.0, i%5/5.0]</code>
+        <li> <b> Special case </b>If the snippet returns an array of more than 3 floats, these are treated as specific indices to highlight <code>[11,23,55,67,81]</code> or <code>primes</code>
+        </ul>
+        <br>
+            <textarea rows="2" cols="80" id="predicate_text"> true
+                    </textarea> 
+                    
+                    <button id="predicate_button" onclick="filter_points()"> Filter </button>
+                    
+    </div>
+   
+      
+        
+	</body>
+</html>
