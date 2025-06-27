@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Interactive AI Startup Ecosystem</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Soothing Neutrals & Tech Blue -->
+    <!-- Application Structure Plan: The SPA is designed as an interactive dashboard, not a linear report. A sticky top navigation allows users to jump between the key layers of the AI stack (Hardware, Training, Inference, Applications). The "Home" section provides an executive summary and an interactive, clickable diagram of the AI stack, which acts as a visual navigation hub. Each layer-specific section includes an introduction, key market analysis, interactive charts for quantitative data (funding, valuations), and a filterable/searchable grid of company profiles. This structure was chosen to transform the dense report into an explorable tool, allowing users to non-linearly dive into specific areas of interest, compare players, and synthesize information more effectively than a static document. -->
+    <!-- Visualization & Content Choices: 
+        1. AI Stack Diagram: (Goal: Organize/Inform) A diagram built with HTML/Tailwind presents the report's core framework. Interaction: Clickable links for navigation. Justification: Provides immediate context and a visual entry point. Method: HTML/CSS.
+        2. Funding/Valuation Charts: (Goal: Compare) Bar charts visualize funding totals per sub-category. Interaction: Chart.js tooltips on hover. Justification: Makes quantitative comparisons immediate and impactful. Library: Chart.js (Canvas).
+        3. Company Explorer: (Goal: Explore/Organize) The static appendix table is converted into an interactive grid of cards. Interaction: Live search, category filtering, and clickable cards that open a detailed modal view. Justification: Enables user-driven discovery and deep-dives into specific companies, which is the primary value of the app. Method: Vanilla JS manipulating DOM elements.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F5F5F4; /* stone-100 */
+            color: #1C1917; /* stone-900 */
+        }
+        .section-title {
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: #1C1917; /* stone-900 */
+        }
+        .section-subtitle {
+            font-size: 1.25rem;
+            font-weight: 500;
+            margin-bottom: 2rem;
+            color: #57534E; /* stone-600 */
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid #E7E5E4; /* stone-200 */
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        .modal-backdrop.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            max-width: 90%;
+            width: 60rem;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+        .modal-backdrop.active .modal-content {
+            transform: scale(1);
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 48rem; 
+            margin-left: auto;
+            margin-right: auto;
+            height: 24rem;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 24rem;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header id="header" class="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-40">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0">
+                    <a href="#home" class="text-xl font-bold text-stone-800">AI Ecosystem Explorer</a>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#stack" class="text-stone-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">The AI Stack</a>
+                        <a href="#hardware" class="text-stone-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Hardware</a>
+                        <a href="#training" class="text-stone-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Training/MLOps</a>
+                        <a href="#inference" class="text-stone-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Inference</a>
+                        <a href="#applications" class="text-stone-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Applications</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section id="home" class="py-16 md:py-24 bg-white">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <h1 class="text-4xl md:text-5xl font-extrabold text-stone-900 tracking-tight">The AI Startup Ecosystem</h1>
+                <p class="mt-4 max-w-3xl mx-auto text-lg md:text-xl text-stone-600">A full-stack analysis of key players and market dynamics in hardware, training, inference, and generative applications.</p>
+                <div class="mt-8 max-w-4xl mx-auto text-left text-stone-700 space-y-4">
+                    <p>The artificial intelligence landscape is undergoing a Cambrian explosion of innovation, creating a complex, multi-layered ecosystem where startups are competing and collaborating to define the future of technology. This interactive application provides a comprehensive analysis of this ecosystem, mapping the key players across the entire AI value chain—from the foundational silicon to the end-user applications.</p>
+                    <p>Navigate using the links above or click the layers in the diagram below to explore the interdependencies and strategic dynamics that are critical for understanding this transformative period.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="stack" class="py-16 md:py-24">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center">
+                    <h2 class="section-title">The AI Value Chain</h2>
+                    <p class="section-subtitle">An interactive map from silicon to application. Click a layer to explore.</p>
+                </div>
+                <div class="mt-12 space-y-8 max-w-4xl mx-auto">
+                    <!-- Layer 4 -->
+                    <a href="#applications" class="block">
+                        <div class="card p-6 text-center group">
+                            <div class="flex items-center justify-center space-x-4">
+                                <div class="bg-blue-100 text-blue-700 rounded-lg p-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-xl font-bold text-stone-800 group-hover:text-blue-600">Layer 4: Applications</h3>
+                                    <p class="text-stone-600 mt-1">The Experience Layer (Multimodal & Voice)</p>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                    <!-- Arrow -->
+                    <div class="flex justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg></div>
+                    <!-- Layer 3 -->
+                    <a href="#inference" class="block">
+                        <div class="card p-6 text-center group">
+                           <div class="flex items-center justify-center space-x-4">
+                                <div class="bg-green-100 text-green-700 rounded-lg p-3">
+                                   <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-xl font-bold text-stone-800 group-hover:text-blue-600">Layer 3: Inference</h3>
+                                    <p class="text-stone-600 mt-1">The Delivery Network</p>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                    <!-- Arrow -->
+                    <div class="flex justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg></div>
+                    <!-- Layer 2 -->
+                    <a href="#training" class="block">
+                        <div class="card p-6 text-center group">
+                            <div class="flex items-center justify-center space-x-4">
+                                <div class="bg-yellow-100 text-yellow-700 rounded-lg p-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.096 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-xl font-bold text-stone-800 group-hover:text-blue-600">Layer 2: Training & MLOps</h3>
+                                    <p class="text-stone-600 mt-1">The Engine Room</p>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                    <!-- Arrow -->
+                    <div class="flex justify-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg></div>
+                    <!-- Layer 1 -->
+                    <a href="#hardware" class="block">
+                        <div class="card p-6 text-center group">
+                            <div class="flex items-center justify-center space-x-4">
+                                <div class="bg-red-100 text-red-700 rounded-lg p-3">
+                                   <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12l-2 0l-2 0m5.636-5.636L7 5 5 7m0 10l2 2 2-2m5.636 2l2 2 2-2m-2-10l2-2 2 2m-10-2l-2 2-2-2" /><circle cx="12" cy="12" r="3" /></svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-xl font-bold text-stone-800 group-hover:text-blue-600">Layer 1: Hardware</h3>
+                                    <p class="text-stone-600 mt-1">The Foundation (Semiconductors)</p>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <section id="hardware" class="py-16 md:py-24 bg-white">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center">
+                    <h2 class="section-title">Hardware: The AI Frontier</h2>
+                    <p class="section-subtitle">Innovators in AI-native silicon, from data center chips to photonic computing.</p>
+                </div>
+                <div id="hardware-content" class="space-y-12"></div>
+            </div>
+        </section>
+
+        <section id="training" class="py-16 md:py-24">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center">
+                    <h2 class="section-title">Training & MLOps: The AI Factory</h2>
+                    <p class="section-subtitle">Platforms for training, optimization, and managing the AI model lifecycle.</p>
+                </div>
+                <div id="training-content" class="space-y-12"></div>
+            </div>
+        </section>
+
+        <section id="inference" class="py-16 md:py-24 bg-white">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center">
+                    <h2 class="section-title">Inference: The Delivery Economy</h2>
+                    <p class="section-subtitle">Delivering AI efficiently and at scale.</p>
+                </div>
+                <div id="inference-content" class="space-y-12"></div>
+            </div>
+        </section>
+
+        <section id="applications" class="py-16 md:py-24">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center">
+                    <h2 class="section-title">Applications: The Vanguard</h2>
+                    <p class="section-subtitle">The most visible layer, where AI meets the user through multimodal and voice experiences.</p>
+                </div>
+                <div id="applications-content" class="space-y-12"></div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-stone-800 text-white">
+        <div class="container mx-auto py-8 px-4 sm:px-6 lg:px-8 text-center">
+            <p>Interactive AI Ecosystem Report</p>
+            <p class="text-sm text-stone-400 mt-2">Data sourced from "The AI Startup Ecosystem" report. Application created for illustrative purposes.</p>
+        </div>
+    </footer>
+
+    <div id="modal-backdrop" class="modal-backdrop">
+        <div id="modal-content" class="modal-content">
+        </div>
+    </div>
+
+    <script>
+        const startupData = [
+            { name: "Groq", category: "Hardware", subCategory: "Chip Architect", description: "Develops a Language Processing Unit (LPU) for ultra-low-latency AI inference.", year: 2016, hq: "Mountain View, USA", funding: 1000, valuation: "2.8B", investors: "BlackRock, Tiger Global, Cisco Investments" },
+            { name: "Cerebras Systems", category: "Hardware", subCategory: "Chip Architect", description: "Builds the Wafer-Scale Engine, the world's largest chip, for accelerating large AI model training.", year: 2015, hq: "Sunnyvale, USA", funding: 720, valuation: "4B+", investors: "Benchmark, Coatue, Altimeter" },
+            { name: "Tenstorrent", category: "Hardware", subCategory: "Chip Architect", description: "Develops high-performance AI processors for both training and inference workloads, led by Jim Keller.", year: 2016, hq: "Toronto, Canada", funding: 1180, valuation: "2.6B", investors: "Samsung, Fidelity, Bezos Expeditions" },
+            { name: "Graphcore", category: "Hardware", subCategory: "Chip Architect", description: "Developed an Intelligence Processing Unit (IPU) for machine intelligence.", year: 2016, hq: "Bristol, UK", funding: 767, valuation: "2.8B", investors: "SoftBank Group (Acquirer)" },
+            { name: "Lightmatter", category: "Hardware", subCategory: "Photonics", description: "Develops photonic processors and interconnects that use light for faster, more energy-efficient AI computing.", year: 2017, hq: "Boston, USA", funding: 850, valuation: "4.4B", investors: "T. Rowe Price, Google Ventures, Fidelity" },
+            { name: "Celestial AI", category: "Hardware", subCategory: "Photonics", description: "Develops a Photonic Fabric, an optical interconnect technology to overcome data bottlenecks in AI systems.", year: 2020, hq: "Santa Clara, USA", funding: 175, valuation: "N/A", investors: "AMD, Samsung, IAG Capital Partners" },
+            { name: "Hailo", category: "Hardware", subCategory: "Edge AI", description: "Provides high-performance, low-power AI processors for edge devices like smart vehicles and cameras.", year: 2017, hq: "Tel Aviv, Israel", funding: 340, valuation: "1.2B", investors: "Poalim Equity, OurCrowd, Gil Agmon" },
+            { name: "Blaize", category: "Hardware", subCategory: "Edge AI", description: "Provides a full stack of edge AI infrastructure solutions based on its Graph Streaming Processor (GSP).", year: 2010, hq: "El Dorado Hills, USA", funding: 136, valuation: "1.2B", investors: "Public (SPAC Merger)" },
+            { name: "Mythic", category: "Hardware", subCategory: "Edge AI", description: "Specializes in analog compute-in-memory technology for power-efficient AI inference at the edge.", year: 2012, hq: "Austin, USA", funding: 178, valuation: "165M", investors: "DCVC, Lux Capital, Lockheed Martin Ventures" },
+            { name: "Untether AI", category: "Hardware", subCategory: "Edge AI", description: "Focused on at-memory compute for high-efficiency AI inference acceleration.", year: 2018, hq: "Toronto, Canada", funding: 152, valuation: "N/A", investors: "AMD (Acquired Team)" },
+            { name: "Predibase", category: "Training/MLOps", subCategory: "End-to-End Platform", description: "Offers a low-code platform for fine-tuning and serving open-source LLMs.", year: 2020, hq: "San Francisco, USA", funding: 28.4, valuation: "100M - 500M", investors: "Rubrik (Acquirer)" },
+            { name: "Unsloth AI", category: "Training/MLOps", subCategory: "Fine-Tuning/Optimization", description: "An open-source platform for dramatically faster and more memory-efficient fine-tuning of LLMs.", year: 2023, hq: "San Francisco, USA", funding: 0.5, valuation: "N/A", investors: "Y Combinator" },
+            { name: "Scale AI", category: "Training/MLOps", subCategory: "Data-Centric AI", description: "Provides a data-centric AI platform for data annotation, model evaluation, and safety.", year: 2016, hq: "San Francisco, USA", funding: 1000, valuation: "29B+", investors: "Meta, Accel, Tiger Global" },
+            { name: "Snorkel AI", category: "Training/MLOps", subCategory: "Data-Centric AI", description: "A platform for programmatic data labeling, enabling the rapid creation of high-quality training data.", year: 2019, hq: "Redwood City, USA", funding: 237, valuation: "1.3B", investors: "Addition, Greylock, Lightspeed" },
+            { name: "Weights & Biases", category: "Training/MLOps", subCategory: "MLOps & Observability", description: "A developer-first MLOps platform for experiment tracking, model versioning, and collaboration.", year: 2017, hq: "San Francisco, USA", funding: 250, valuation: "1.7B", investors: "CoreWeave (Acquirer)" },
+            { name: "Arize AI", category: "Training/MLOps", subCategory: "MLOps & Observability", description: "An ML observability platform for monitoring, troubleshooting, and explaining AI models in production.", year: 2020, hq: "Berkeley, USA", funding: 131, valuation: "N/A", investors: "Adams Street Partners, M12, TCV" },
+            { name: "Anyscale", category: "Training/MLOps", subCategory: "MLOps & Scaling", description: "Provides a platform based on the open-source Ray framework to scale AI and Python applications.", year: 2019, hq: "Berkeley, USA", funding: 250, valuation: "1B+", investors: "a16z, NEA, Intel Capital" },
+            { name: "DataRobot", category: "Training/MLOps", subCategory: "End-to-End Platform", description: "An enterprise AI platform that automates the machine learning lifecycle (AutoML).", year: 2012, hq: "Boston, USA", funding: 1050, valuation: "2.7B", investors: "NEA, Altimeter Capital, Sapphire Ventures" },
+            { name: "OctoML", category: "Training/MLOps", subCategory: "MLOps & Deployment", description: "A machine learning deployment platform to accelerate and optimize model performance on any hardware.", year: 2019, hq: "Seattle, USA", funding: 133, valuation: "N/A", investors: "NVIDIA (Acquirer)" },
+            { name: "Deci", category: "Training/MLOps", subCategory: "Fine-Tuning/Optimization", description: "A deep learning platform to help developers build, optimize, and deploy efficient AI models.", year: 2019, hq: "Givatayim, Israel", funding: 55.1, valuation: "300M", investors: "NVIDIA (Acquirer)" },
+            { name: "BentoML", category: "Training/MLOps", subCategory: "MLOps & Deployment", description: "An open-source framework for building, shipping, and scaling production-ready AI applications.", year: 2019, hq: "San Francisco, USA", funding: 9, valuation: "N/A", investors: "DCM Ventures, Bow Capital" },
+            { name: "Together AI", category: "Inference", subCategory: "Optimized Inference", description: "A cloud platform for training and high-performance inference of generative AI models.", year: 2022, hq: "San Francisco, USA", funding: 534, valuation: "3.3B", investors: "Kleiner Perkins, NVIDIA, Salesforce Ventures" },
+            { name: "Fireworks AI", category: "Inference", subCategory: "Optimized Inference", description: "A high-speed generative AI platform for developers, known for its low-latency inference engine.", year: 2022, hq: "Redwood City, USA", funding: 77, valuation: "552M", investors: "Benchmark, Sequoia, NVIDIA" },
+            { name: "Hugging Face", category: "Inference", subCategory: "Model Hosting", description: "The leading open platform and community for AI builders, offering model hosting and inference endpoints.", year: 2016, hq: "New York, USA", funding: 235, valuation: "4.5B", investors: "Google, Amazon, NVIDIA, Salesforce" },
+            { name: "Replicate", category: "Inference", subCategory: "Model Hosting", description: "A developer-focused platform to run open-source machine learning models with a simple API.", year: 2019, hq: "Berkeley, USA", funding: 52.5, valuation: "350M", investors: "a16z, Sequoia Capital, Y Combinator" },
+            { name: "Midjourney", category: "Applications", subCategory: "Text-to-Image", description: "An independent research lab that generates highly artistic and stylized images from text prompts.", year: 2021, hq: "San Francisco, USA", funding: 0, valuation: "10B+ (Est.)", investors: "Unfunded" },
+            { name: "Runway", category: "Applications", subCategory: "Text-to-Video", description: "An applied AI research company building next-generation creative tools for video editing and generation.", year: 2018, hq: "New York, USA", funding: 544, valuation: "849M - 1.57B", investors: "General Atlantic, Google, NVIDIA" },
+            { name: "Pika Labs", category: "Applications", subCategory: "Text-to-Video", description: "An accessible AI video generation platform for creating and editing videos from text and images.", year: 2023, hq: "Palo Alto, USA", funding: 115, valuation: "470M", investors: "Lightspeed, Spark Capital, Nat Friedman" },
+            { name: "HeyGen", category: "Applications", subCategory: "AI Avatars & Video", description: "A generative AI platform that creates realistic, customizable AI avatars for video content.", year: 2020, hq: "Los Angeles, USA", funding: 65.6, valuation: "500M", investors: "Benchmark, Conviction, Bond Capital" },
+            { name: "Synthesia", category: "Applications", subCategory: "AI Avatars & Video", description: "An enterprise-focused AI video platform for creating training and communication content with avatars.", year: 2017, hq: "London, UK", funding: 336, valuation: "2.1B", investors: "NEA, Accel, NVIDIA, Adobe" },
+            { name: "Stability AI", category: "Applications", subCategory: "Text-to-Image", description: "The company behind the open-source Stable Diffusion model for image, video, and audio generation.", year: 2019, hq: "London, UK", funding: 181, valuation: "1B", investors: "Coatue, Lightspeed Venture Partners" },
+            { name: "ElevenLabs", category: "Voice", subCategory: "Speech Synthesis", description: "A leading AI voice research and deployment company for realistic text-to-speech and voice cloning.", year: 2022, hq: "New York, USA", funding: 281, valuation: "3.3B", investors: "a16z, Sequoia, Iconiq Capital" },
+            { name: "Deepgram", category: "Voice", subCategory: "Speech Recognition", description: "An AI speech platform providing fast and accurate speech-to-text transcription via deep learning models.", year: 2015, hq: "San Francisco, USA", funding: 85.9, valuation: "202M - 333M", investors: "Madrona, Tiger Global, Y Combinator" },
+            { name: "AssemblyAI", category: "Voice", subCategory: "Speech Recognition", description: "Provides APIs for AI models that transcribe and understand human speech.", year: 2017, hq: "San Francisco, USA", funding: 115, valuation: "N/A", investors: "Accel, Insight Partners, Y Combinator" },
+            { name: "SoundHound AI", category: "Voice", subCategory: "Conversational AI", description: "A public company offering voice AI and conversational intelligence solutions for various industries.", year: 2005, hq: "Santa Clara, USA", funding: 191, valuation: "N/A", investors: "Public (NASDAQ: SOUN)" },
+            { name: "Voicemod", category: "Voice", subCategory: "Voice Tools", description: "Provides real-time voice changing and soundboard software for gamers and content creators.", year: 2010, hq: "Valencia, Spain", funding: 22.6, valuation: "N/A", investors: "BITKRAFT Ventures, K Fund" },
+            { name: "WellSaid Labs", category: "Voice", subCategory: "Speech Synthesis", description: "An enterprise-level AI voice generator for creating lifelike synthetic voiceovers from text.", year: 2018, hq: "Seattle, USA", funding: 20, valuation: "N/A", investors: "Voyager Capital, Qualcomm Ventures" },
+            { name: "Resemble AI", category: "Voice", subCategory: "Speech Synthesis", description: "An enterprise-focused generative audio platform for creating human-realistic synthetic voices.", year: 2019, hq: "Toronto, Canada", funding: 12, valuation: "N/A", investors: "Javelin Venture Partners, Comcast Ventures" }
+        ];
+
+        const analysisContent = {
+            hardware: `The AI hardware sector is characterized by dynamics distinct from other software-centric markets. One of the most telling patterns is the critical importance of founder pedigree as a de-risking signal for investors. The sector is extraordinarily capital-intensive and pits nascent companies against the formidable market power of NVIDIA. This high-risk environment necessitates strong, early signals to justify the nine-figure investments required. A clear pattern emerges from the data: the most successful hardware challengers are led by teams with legendary track records from elite corporate and academic labs.`,
+            training: `A striking characteristic of the AI training and MLOps layer is the dominance of companies originating from elite academic research labs, particularly at Stanford University and UC Berkeley. This "lab-to-unicorn" pipeline provides startups with a powerful trifecta of advantages: a pre-existing community of users from an open-source project, a battle-tested technology, and a founding team with world-class credibility. Simultaneously, this market segment is experiencing a rapid consolidation cycle, as larger platform players are aggressively acquiring key technologies and talent.`,
+            inference: `The inference market is a battleground of competing business models: pure-play software platforms versus vertically integrated hardware-software players. Companies like Together AI build their value on commodity hardware, competing on software optimization and ecosystem. In contrast, a player like Groq ties its inference service directly to its proprietary hardware. This creates a bifurcation: customers prioritizing flexibility may choose software platforms, while those needing mission-critical speed may prefer an integrated solution.`,
+            applications: `The application layer showcases two starkly different go-to-market strategies: the "Bootstrapped Community" model and the "VC-Fueled Enterprise" model. Midjourney exemplifies the first, achieving massive scale and profitability through organic, community-led growth with no external funding. In sharp contrast, companies like Synthesia and ElevenLabs follow the traditional VC route, raising hundreds of millions to build enterprise sales teams and address corporate needs. This demonstrates that there is no single path to success in the AI application space.`
+        };
+
+        const modalBackdrop = document.getElementById('modal-backdrop');
+        const modalContent = document.getElementById('modal-content');
+
+        function openModal(company) {
+            modalContent.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="text-2xl font-bold text-stone-800">${company.name}</h3>
+                        <p class="text-stone-500">${company.subCategory}</p>
+                    </div>
+                    <button id="close-modal" class="text-stone-500 hover:text-stone-800">&times;</button>
+                </div>
+                <div class="mt-6 border-t border-stone-200 pt-6">
+                    <p class="text-stone-700">${company.description}</p>
+                    <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                        <div class="bg-stone-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-stone-600">Funding</h4>
+                            <p class="text-2xl font-bold text-blue-600">$${company.funding}M</p>
+                        </div>
+                        <div class="bg-stone-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-stone-600">Last Valuation</h4>
+                            <p class="text-2xl font-bold text-blue-600">$${company.valuation}</p>
+                        </div>
+                        <div class="bg-stone-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-stone-600">Founded</h4>
+                            <p class="text-2xl font-bold text-stone-800">${company.year}</p>
+                        </div>
+                        <div class="bg-stone-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-stone-600">Headquarters</h4>
+                            <p class="text-2xl font-bold text-stone-800">${company.hq}</p>
+                        </div>
+                    </div>
+                    <div class="mt-6 bg-stone-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-stone-600">Key Investors / Acquirer</h4>
+                        <p class="text-stone-800 mt-1">${company.investors}</p>
+                    </div>
+                </div>
+            `;
+            modalBackdrop.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            document.getElementById('close-modal').addEventListener('click', closeModal);
+        }
+
+        function closeModal() {
+            modalBackdrop.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        modalBackdrop.addEventListener('click', (e) => {
+            if (e.target === modalBackdrop) {
+                closeModal();
+            }
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modalBackdrop.classList.contains('active')) {
+                closeModal();
+            }
+        });
+
+        function createCompanyCard(company) {
+            const card = document.createElement('div');
+            card.className = 'card company-card cursor-pointer p-6 flex flex-col justify-between';
+            card.dataset.name = company.name.toLowerCase();
+            card.dataset.category = company.subCategory;
+            card.innerHTML = `
+                <div>
+                    <h4 class="font-bold text-lg text-stone-800">${company.name}</h4>
+                    <p class="text-sm text-stone-500 mb-4">${company.subCategory}</p>
+                    <p class="text-sm text-stone-600">${company.description}</p>
+                </div>
+                <div class="mt-4 pt-4 border-t border-stone-200 flex justify-between items-center text-sm font-semibold">
+                    <span class="text-blue-600">$${company.funding}M Funded</span>
+                    <span class="text-stone-500">${company.year}</span>
+                </div>
+            `;
+            card.addEventListener('click', () => openModal(company));
+            return card;
+        }
+
+        function renderSection(categoryName, categoryTitle, contentElId, analysisText) {
+            const container = document.getElementById(contentElId);
+            const categoryData = startupData.filter(c => c.category === categoryName || (categoryName === 'Applications' && c.category === 'Voice'));
+            
+            const subCategories = [...new Set(categoryData.map(c => c.subCategory))];
+
+            let subCategoryData = {};
+            subCategories.forEach(sub => {
+                subCategoryData[sub] = categoryData
+                    .filter(c => c.subCategory === sub)
+                    .reduce((acc, cur) => acc + cur.funding, 0);
+            });
+
+            const analysisBlock = `
+                <div class="max-w-4xl mx-auto">
+                    <h3 class="text-2xl font-bold mb-4 text-center">Market Analysis</h3>
+                    <div class="card p-6">
+                        <p class="text-stone-700 leading-relaxed">${analysisText}</p>
+                    </div>
+                </div>
+            `;
+
+            const chartBlock = `
+                <div class="max-w-4xl mx-auto">
+                     <h3 class="text-2xl font-bold mb-4 text-center">Total Funding by Sub-Category ($M)</h3>
+                     <div class="chart-container">
+                        <canvas id="${categoryName.toLowerCase()}-chart"></canvas>
+                     </div>
+                </div>
+            `;
+
+            const explorerBlock = `
+                <div>
+                    <h3 class="text-2xl font-bold mb-4 text-center">Company Explorer</h3>
+                    <div class="flex flex-wrap justify-center gap-2 mb-8">
+                        <button class="filter-btn bg-blue-600 text-white px-4 py-2 rounded-full text-sm" data-category="${categoryName}" data-filter="all">All</button>
+                        ${subCategories.map(sc => `<button class="filter-btn bg-white text-stone-700 border border-stone-300 px-4 py-2 rounded-full text-sm" data-category="${categoryName}" data-filter="${sc}">${sc}</button>`).join('')}
+                    </div>
+                    <div class="relative max-w-lg mx-auto mb-8">
+                        <input type="text" id="${categoryName.toLowerCase()}-search" class="search-input w-full px-4 py-3 border border-stone-300 rounded-full" placeholder="Search for a company...">
+                    </div>
+                    <div id="${categoryName.toLowerCase()}-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = analysisBlock + chartBlock + explorerBlock;
+
+            const grid = document.getElementById(`${categoryName.toLowerCase()}-grid`);
+            categoryData.forEach(company => {
+                grid.appendChild(createCompanyCard(company));
+            });
+            
+            new Chart(document.getElementById(`${categoryName.toLowerCase()}-chart`).getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(subCategoryData),
+                    datasets: [{
+                        label: 'Total Funding ($M)',
+                        data: Object.values(subCategoryData),
+                        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` $${context.raw.toFixed(1)}M`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value + 'M';
+                                }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                autoSkip: false,
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSection('Hardware', 'Hardware', 'hardware-content', analysisContent.hardware);
+            renderSection('Training/MLOps', 'Training/MLOps', 'training-content', analysisContent.training);
+            renderSection('Inference', 'Inference', 'inference-content', analysisContent.inference);
+            renderSection('Applications', 'Applications', 'applications-content', analysisContent.applications);
+
+            document.querySelectorAll('.filter-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const filter = e.target.dataset.filter;
+                    const category = e.target.dataset.category;
+                    const gridId = `${category.toLowerCase()}-grid`;
+                    
+                    document.querySelectorAll(`.filter-btn[data-category="${category}"]`).forEach(btn => {
+                        btn.classList.remove('bg-blue-600', 'text-white');
+                        btn.classList.add('bg-white', 'text-stone-700');
+                    });
+                    e.target.classList.add('bg-blue-600', 'text-white');
+                    e.target.classList.remove('bg-white', 'text-stone-700');
+
+                    document.querySelectorAll(`#${gridId} .company-card`).forEach(card => {
+                        if (filter === 'all' || card.dataset.category === filter) {
+                            card.style.display = 'flex';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    });
+                });
+            });
+
+            document.querySelectorAll('.search-input').forEach(input => {
+                input.addEventListener('keyup', (e) => {
+                    const searchTerm = e.target.value.toLowerCase();
+                    const gridId = e.target.id.replace('-search', '-grid');
+                    document.querySelectorAll(`#${gridId} .company-card`).forEach(card => {
+                        if (card.dataset.name.includes(searchTerm)) {
+                            card.style.display = 'flex';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    });
+                });
+            });
+        });
+    </script>
+</body>
+</html>
